@@ -59,10 +59,39 @@ function Step3Content() {
       : [];
   const partsCount = parts.length || 1;
 
+  const BATCH_SIZE = 10;
+  const totalBatches = Math.ceil(partsCount / BATCH_SIZE);
+  const batches = Array.from({ length: totalBatches }, (_, i) => {
+    const start = i * BATCH_SIZE + 1;
+    const end = Math.min((i + 1) * BATCH_SIZE, partsCount);
+    return { batchNum: i + 1, start, end, label: `Parts ${start}-${end}` };
+  });
+
+  const queryParts = searchParams.get("parts");
+  const queryBatch = searchParams.get("batch");
+  const [selectedBatchNum, setSelectedBatchNum] = useState<number>(() => {
+    if (queryBatch) {
+      const b = parseInt(queryBatch, 10);
+      if (b >= 1 && b <= totalBatches) return b;
+    }
+    if (queryParts) {
+      const match = queryParts.match(/(\d+)/);
+      if (match) {
+        const start = parseInt(match[1], 10);
+        const b = Math.floor((start - 1) / BATCH_SIZE) + 1;
+        if (b >= 1 && b <= totalBatches) return b;
+      }
+    }
+    return 1;
+  });
+
+  const currentBatch = batches.find((b) => b.batchNum === selectedBatchNum) || batches[0];
+  const batchLabel = totalBatches > 1 ? currentBatch.label : `Parts 1-${partsCount}`;
+
   // Bot WhatsApp number
   const botNumber = "94760372547";
   const gameUrl = game?.link || `https://fitgirl-repacks.site/?p=${gameId}`;
-  const requestMessage = `!req_game ${gameUrl} | ${partsCount} parts | TOKEN: #${token}`;
+  const requestMessage = `!req_game ${gameUrl} | ${batchLabel} | TOKEN: #${token}`;
   const waUrl = `https://wa.me/${botNumber}?text=${encodeURIComponent(requestMessage)}`;
 
   const handleCopy = () => {
@@ -142,6 +171,34 @@ function Step3Content() {
               </div>
             </div>
 
+            {/* Batch Selector if more than 10 parts */}
+            {totalBatches > 1 && (
+              <div className="flex flex-col gap-2 rounded-2xl bg-surface p-4 border border-white/10">
+                <span className="text-xs font-bold text-gray-200 font-mono flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-accent-cyan" />
+                  <span>SELECT BATCH TO DELIVER (10 PARTS PER REQUEST):</span>
+                </span>
+                <p className="text-[11px] text-gray-400">
+                  Select which batch you want to request now:
+                </p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {batches.map((b) => (
+                    <button
+                      key={b.batchNum}
+                      onClick={() => setSelectedBatchNum(b.batchNum)}
+                      className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all border ${
+                        selectedBatchNum === b.batchNum
+                          ? "bg-accent-purple text-white border-accent-purple shadow-lg shadow-accent-purple/30 scale-105"
+                          : "bg-surface-card border-white/10 text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Batch {b.batchNum} ({b.label})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Big WhatsApp CTA Button */}
             <a
               href={waUrl}
@@ -150,7 +207,11 @@ function Step3Content() {
               className="w-full flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400 px-6 py-4 text-base font-black text-black shadow-2xl shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <MessageSquare className="h-6 w-6 fill-black" />
-              <span>REQUEST ALL {partsCount} PARTS VIA WHATSAPP BOT 🚀</span>
+              <span>
+                {totalBatches > 1
+                  ? `REQUEST BATCH ${selectedBatchNum} (${currentBatch.label}) VIA WHATSAPP BOT 🚀`
+                  : `REQUEST ALL ${partsCount} PARTS VIA WHATSAPP BOT 🚀`}
+              </span>
             </a>
 
             {/* Copy Command Fallback */}

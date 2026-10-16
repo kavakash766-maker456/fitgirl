@@ -34,9 +34,12 @@ function Step2Content() {
     }
   }, [countdown]);
 
+  const partsParam = searchParams.get("parts") || "";
+  const batchParam = searchParams.get("batch") || "";
+
   const handleProceed = () => {
     if (!isReady || !gameId) return;
-    router.push(`/verify/step-3?id=${gameId}&token2=${Date.now()}`);
+    router.push(`/verify/step-3?id=${gameId}&batch=${batchParam}&parts=${partsParam}&token2=${Date.now()}`);
   };
 
   return (

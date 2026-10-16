@@ -57,13 +57,28 @@ function GameDetailContent() {
     fetchGame();
   }, [id]);
 
-  const handleStartRequest = () => {
+  const [selectedBatch, setSelectedBatch] = useState<number>(1);
+
+  const parts = game?.downloads[activeTab]?.coreRar || [];
+  const partsCount = parts.length || 1;
+  const BATCH_SIZE = 10;
+  const totalBatches = Math.ceil(partsCount / BATCH_SIZE);
+  const batches = Array.from({ length: totalBatches }, (_, i) => {
+    const start = i * BATCH_SIZE + 1;
+    const end = Math.min((i + 1) * BATCH_SIZE, partsCount);
+    return { batchNum: i + 1, start, end, label: `Parts ${start}–${end}` };
+  });
+
+  const handleStartRequest = (batchNum?: number) => {
     if (!game) return;
+    const chosenNum = batchNum || selectedBatch;
+    const b = batches.find((x) => x.batchNum === chosenNum) || batches[0];
     // Store in sessionStorage for multi-step verification
     if (typeof window !== "undefined") {
       sessionStorage.setItem("filmfeed_game_request", JSON.stringify(game));
+      sessionStorage.setItem("filmfeed_game_batch", JSON.stringify(b));
     }
-    router.push(`/verify/step-1?id=${game.id}`);
+    router.push(`/verify/step-1?id=${game.id}&batch=${b.batchNum}&parts=${b.start}-${b.end}`);
   };
 
   if (loading) {
@@ -93,9 +108,6 @@ function GameDetailContent() {
       </div>
     );
   }
-
-  const parts = game.downloads[activeTab]?.coreRar || [];
-  const partsCount = parts.length || 1;
 
   return (
     <div className="flex flex-col gap-8 pb-12">
@@ -172,14 +184,46 @@ function GameDetailContent() {
               </div>
             </div>
 
+            {/* Batch Selector if more than 10 parts */}
+            {totalBatches > 1 && (
+              <div className="mt-6 flex flex-col gap-2 rounded-2xl bg-surface/90 border border-white/10 p-4">
+                <span className="text-xs font-bold text-gray-200 font-mono flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-accent-cyan" />
+                  <span>SELECT DOWNLOAD BATCH (10 PARTS PER REQUEST):</span>
+                </span>
+                <p className="text-[11px] text-gray-400">
+                  Select which 10-part batch to deliver to WhatsApp. You can request each batch sequentially!
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {batches.map((b) => (
+                    <button
+                      key={b.batchNum}
+                      onClick={() => setSelectedBatch(b.batchNum)}
+                      className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all border ${
+                        selectedBatch === b.batchNum
+                          ? "bg-accent-purple text-white border-accent-purple shadow-lg shadow-accent-purple/30 scale-105"
+                          : "bg-surface-card border-white/10 text-gray-400 hover:text-white hover:border-white/20"
+                      }`}
+                    >
+                      Batch {b.batchNum} ({b.label})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Big Action CTA */}
-            <div className="mt-8 flex flex-col sm:flex-row items-center gap-4 border-t border-white/10 pt-6">
+            <div className="mt-6 flex flex-col sm:flex-row items-center gap-4 border-t border-white/10 pt-6">
               <button
-                onClick={handleStartRequest}
+                onClick={() => handleStartRequest(selectedBatch)}
                 className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-accent-cyan px-8 py-4 text-sm font-black text-black shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.99] transition-all"
               >
                 <MessageSquare className="h-5 w-5 fill-black" />
-                <span>REQUEST ALL {partsCount} PARTS VIA WHATSAPP 🚀</span>
+                <span>
+                  {totalBatches > 1
+                    ? `REQUEST BATCH ${selectedBatch} (${batches[selectedBatch - 1]?.label}) VIA WHATSAPP 🚀`
+                    : `REQUEST ALL ${partsCount} PARTS VIA WHATSAPP 🚀`}
+                </span>
               </button>
 
               <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
